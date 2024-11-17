@@ -106,6 +106,15 @@ const Canvas = forwardRef<any, CanvasProps>(({ tool, brushColor, brushSize }, re
   }, [brushColor, brushSize, tool, isInitialized]);
 
   useEffect(() => {
+    if (!contextRef.current) return;
+    
+    const ctx = contextRef.current;
+    ctx.strokeStyle = tool === 'eraser' ? '#FFFFFF' : brushColor;
+    ctx.lineWidth = brushSize;
+    ctx.globalCompositeOperation = tool === 'eraser' ? 'destination-out' : 'source-over';
+  }, [tool, brushColor, brushSize]);
+
+  useEffect(() => {
     const handleResize = () => {
       if (!canvasRef.current || !contextRef.current || !isInitialized) return;
 
@@ -148,69 +157,54 @@ const Canvas = forwardRef<any, CanvasProps>(({ tool, brushColor, brushSize }, re
   }, [brushColor, brushSize, tool, isInitialized]);
 
   const saveState = () => {
-    if (!canvasRef.current || !contextRef.current) return;
-
-    const imageData = contextRef.current.getImageData(
-      0,
-      0,
-      canvasRef.current.width,
-      canvasRef.current.height
-    );
-
-    setUndoStack(prev => [...prev, { 
-      imageData, 
-      tool, 
-      color: brushColor, 
-      size: brushSize 
+    if (!contextRef.current || !canvasRef.current) return;
+    
+    const canvas = canvasRef.current;
+    const imageData = contextRef.current.getImageData(0, 0, canvas.width, canvas.height);
+    
+    setUndoStack(prev => [...prev, {
+      imageData,
+      tool,
+      color: brushColor,
+      size: brushSize
     }]);
     setRedoStack([]);
   };
 
   const undo = () => {
-    if (!canvasRef.current || !contextRef.current || undoStack.length === 0) return;
-
-    const currentState = undoStack[undoStack.length - 1];
+    if (undoStack.length === 0) return;
     
-    if (undoStack.length > 1) {
-      const previousState = undoStack[undoStack.length - 2];
-      
+    const canvas = canvasRef.current;
+    const ctx = contextRef.current;
+    if (!canvas || !ctx) return;
+    
+    const currentState = undoStack[undoStack.length - 1];
+    const previousState = undoStack[undoStack.length - 2];
+    
+    if (previousState) {
+      ctx.putImageData(previousState.imageData, 0, 0);
       setRedoStack(prev => [...prev, currentState]);
       setUndoStack(prev => prev.slice(0, -1));
-
-      contextRef.current.globalCompositeOperation = 'source-over';
-      contextRef.current.putImageData(previousState.imageData, 0, 0);
     } else {
-      contextRef.current.globalCompositeOperation = 'source-over';
-      contextRef.current.fillStyle = '#FFFFFF';
-      contextRef.current.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-      
-      const imageData = contextRef.current.getImageData(
-        0,
-        0,
-        canvasRef.current.width,
-        canvasRef.current.height
-      );
-      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       setRedoStack(prev => [...prev, currentState]);
-      setUndoStack(prev => [{
-        imageData,
-        tool: 'pen',
-        color: brushColor,
-        size: brushSize
-      }]);
+      setUndoStack([]);
     }
   };
 
   const redo = () => {
-    if (!canvasRef.current || !contextRef.current || redoStack.length === 0) return;
-
+    if (redoStack.length === 0) return;
+    
+    const ctx = contextRef.current;
+    if (!ctx) return;
+    
     const nextState = redoStack[redoStack.length - 1];
+    ctx.putImageData(nextState.imageData, 0, 0);
     
     setUndoStack(prev => [...prev, nextState]);
     setRedoStack(prev => prev.slice(0, -1));
-
-    contextRef.current.globalCompositeOperation = 'source-over';
-    contextRef.current.putImageData(nextState.imageData, 0, 0);
   };
 
   const clear = () => {
@@ -370,6 +364,20 @@ const Canvas = forwardRef<any, CanvasProps>(({ tool, brushColor, brushSize }, re
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        
+        const maxWidth = canvas.width * 0.8;
+        const maxHeight = canvas.height * 0.8;
+        let width = img.width;
+        let height = img.height;
+        
+        if (width > maxWidth || height > maxHeight) {
+          const ratio = Math.min(maxWidth / width, maxHeight / height);
+          width *= ratio;
+          height *= ratio;
+        }
+        
         addMedia(img, 'image');
       };
       img.src = e.target?.result as string;
@@ -380,11 +388,23 @@ const Canvas = forwardRef<any, CanvasProps>(({ tool, brushColor, brushSize }, re
   const handleVideoUpload = (file: File) => {
     const video = document.createElement('video');
     video.src = URL.createObjectURL(file);
-    video.autoplay = false;
-    video.loop = true;
-    video.muted = true;
-
     video.onloadedmetadata = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      
+      const maxWidth = canvas.width * 0.8;
+      const maxHeight = canvas.height * 0.8;
+      let width = video.videoWidth;
+      let height = video.videoHeight;
+      
+      if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width *= ratio;
+        height *= ratio;
+      }
+      
+      video.width = width;
+      video.height = height;
       addMedia(video, 'video');
     };
   };

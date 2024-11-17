@@ -166,9 +166,12 @@ const Toolbar: React.FC<ToolbarProps> = ({
         transition={{ type: 'spring', damping: 20, stiffness: 300 }}
       >
         <motion.div
-          className="bg-white/90 backdrop-blur-md rounded-full shadow-lg px-5 py-3 flex items-center gap-3 mx-auto"
+          className="bg-white/90 backdrop-blur-md rounded-full px-5 py-3 flex items-center gap-3 mx-auto relative"
           whileHover={{ scale: 1.02 }}
           transition={{ type: 'spring', damping: 20, stiffness: 400 }}
+          style={{
+            boxShadow: '0 -10px 15px -3px rgba(0, 0, 0, 0.1), 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 -4px 6px -4px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)',
+          }}
         >
           {/* Drawing Tools */}
           <div className="flex items-center gap-2 border-r border-gray-200/50 pr-3">
