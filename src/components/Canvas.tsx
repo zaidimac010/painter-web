@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
+import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 
 interface Point {
@@ -46,7 +46,7 @@ const resizeHandles: ResizeHandle[] = [
   { position: 'bottomRight', cursor: 'se-resize' }
 ];
 
-const Canvas = forwardRef<any, CanvasProps>(({ tool, brushColor, brushSize }, ref) => {
+const Canvas = forwardRef<any, CanvasProps>(({ tool, brushColor, brushSize, onImageUpload, onVideoUpload }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const contextRef = useRef<CanvasRenderingContext2D | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -156,7 +156,7 @@ const Canvas = forwardRef<any, CanvasProps>(({ tool, brushColor, brushSize }, re
     return () => window.removeEventListener('resize', handleResize);
   }, [brushColor, brushSize, tool, isInitialized]);
 
-  const saveState = () => {
+  const saveState = useCallback(() => {
     if (!contextRef.current || !canvasRef.current) return;
     
     const canvas = canvasRef.current;
@@ -169,9 +169,9 @@ const Canvas = forwardRef<any, CanvasProps>(({ tool, brushColor, brushSize }, re
       size: brushSize
     }]);
     setRedoStack([]);
-  };
+  }, [brushColor, brushSize, tool]);
 
-  const undo = () => {
+  const undo = useCallback(() => {
     if (undoStack.length === 0) return;
     
     const canvas = canvasRef.current;
@@ -192,9 +192,9 @@ const Canvas = forwardRef<any, CanvasProps>(({ tool, brushColor, brushSize }, re
       setRedoStack(prev => [...prev, currentState]);
       setUndoStack([]);
     }
-  };
+  }, [undoStack]);
 
-  const redo = () => {
+  const redo = useCallback(() => {
     if (redoStack.length === 0) return;
     
     const ctx = contextRef.current;
@@ -205,44 +205,28 @@ const Canvas = forwardRef<any, CanvasProps>(({ tool, brushColor, brushSize }, re
     
     setUndoStack(prev => [...prev, nextState]);
     setRedoStack(prev => prev.slice(0, -1));
-  };
+  }, [redoStack]);
 
-  const clear = () => {
-    if (!canvasRef.current || !contextRef.current) return;
+  const clear = useCallback(() => {
+    if (!contextRef.current || !canvasRef.current) return;
 
-    const currentState = {
-      imageData: contextRef.current.getImageData(
-        0,
-        0,
-        canvasRef.current.width,
-        canvasRef.current.height
-      ),
-      tool,
-      color: brushColor,
-      size: brushSize
-    };
+    const canvas = canvasRef.current;
+    const ctx = contextRef.current;
 
-    contextRef.current.globalCompositeOperation = 'source-over';
-    contextRef.current.fillStyle = '#FFFFFF';
-    contextRef.current.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    // Clear the canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const clearedImageData = contextRef.current.getImageData(
-      0,
-      0,
-      canvasRef.current.width,
-      canvasRef.current.height
-    );
+    // Clear media
+    setMedia([]);
+    setSelectedMedia(null);
 
-    setUndoStack(prev => [...prev, currentState, {
-      imageData: clearedImageData,
-      tool: 'pen',
-      color: brushColor,
-      size: brushSize
-    }]);
-    setRedoStack([]);
-  };
+    // Save state
+    saveState();
+  }, [saveState]);
 
-  const getCoordinates = (event: React.MouseEvent | React.TouchEvent): Point | null => {
+  const getCoordinates = useCallback((event: React.MouseEvent | React.TouchEvent): Point | null => {
     if (!canvasRef.current) return null;
 
     const canvas = canvasRef.current;
@@ -260,7 +244,7 @@ const Canvas = forwardRef<any, CanvasProps>(({ tool, brushColor, brushSize }, re
         y: event.clientY - rect.top
       };
     }
-  };
+  }, []);
 
   const startDrawing = (event: React.MouseEvent | React.TouchEvent) => {
     event.preventDefault();
@@ -302,42 +286,47 @@ const Canvas = forwardRef<any, CanvasProps>(({ tool, brushColor, brushSize }, re
     setLastPoint(null);
   };
 
-  const addMedia = (element: HTMLImageElement | HTMLVideoElement, type: 'image' | 'video') => {
-    const aspectRatio = element.width / element.height;
-    const maxWidth = canvasRef.current!.width * 0.8;
-    const maxHeight = canvasRef.current!.height * 0.8;
+  const addMedia = useCallback((element: HTMLImageElement | HTMLVideoElement, type: 'image' | 'video') => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const maxWidth = canvas.width * 0.8;
+    const maxHeight = canvas.height * 0.8;
 
     let width = element.width;
     let height = element.height;
+    const aspectRatio = width / height;
 
     if (width > maxWidth) {
       width = maxWidth;
       height = width / aspectRatio;
     }
+
     if (height > maxHeight) {
       height = maxHeight;
       width = height * aspectRatio;
     }
 
-    const x = (canvasRef.current!.width - width) / 2;
-    const y = (canvasRef.current!.height - height) / 2;
+    const x = (canvas.width - width) / 2;
+    const y = (canvas.height - height) / 2;
 
-    const newMedia: Media = {
-      element,
-      x,
-      y,
-      width,
-      height,
-      aspectRatio,
-      isMoving: false,
-      isResizing: false,
-      type,
-      isPlaying: false
-    };
-
-    setMedia(prev => [...prev, newMedia]);
-    setSelectedMedia(media.length);
-  };
+    setMedia(prevMedia => {
+      const newMedia = [...prevMedia, {
+        element,
+        x,
+        y,
+        width,
+        height,
+        aspectRatio,
+        isMoving: false,
+        isResizing: false,
+        type,
+        isPlaying: false
+      }];
+      setSelectedMedia(newMedia.length - 1);
+      return newMedia;
+    });
+  }, [canvasRef, setMedia, setSelectedMedia]);
 
   const handleVideoPlayback = (index: number) => {
     if (index === selectedMedia) {
@@ -359,7 +348,7 @@ const Canvas = forwardRef<any, CanvasProps>(({ tool, brushColor, brushSize }, re
     }
   };
 
-  const handleImageUpload = (file: File) => {
+  const handleImageUpload = useCallback((file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const img = new Image();
@@ -383,9 +372,9 @@ const Canvas = forwardRef<any, CanvasProps>(({ tool, brushColor, brushSize }, re
       img.src = e.target?.result as string;
     };
     reader.readAsDataURL(file);
-  };
+  }, [addMedia]);
 
-  const handleVideoUpload = (file: File) => {
+  const handleVideoUpload = useCallback((file: File) => {
     const video = document.createElement('video');
     video.src = URL.createObjectURL(file);
     video.onloadedmetadata = () => {
@@ -407,7 +396,7 @@ const Canvas = forwardRef<any, CanvasProps>(({ tool, brushColor, brushSize }, re
       video.height = height;
       addMedia(video, 'video');
     };
-  };
+  }, [addMedia]);
 
   const getResizeHandlePosition = (mediaItem: Media, handle: ResizeHandle) => {
     switch (handle.position) {
@@ -691,25 +680,15 @@ const Canvas = forwardRef<any, CanvasProps>(({ tool, brushColor, brushSize }, re
     render();
   }, [media, selectedMedia, undoStack]);
 
-  useImperativeHandle(ref, () => ({
-    undo: () => {
-      requestAnimationFrame(() => {
-        undo();
-      });
-    },
-    redo: () => {
-      requestAnimationFrame(() => {
-        redo();
-      });
-    },
-    clear: () => {
-      requestAnimationFrame(() => {
-        clear();
-      });
-    },
+  const api = useMemo(() => ({
+    undo,
+    redo,
+    clear,
     handleImageUpload,
     handleVideoUpload
   }), [undo, redo, clear, handleImageUpload, handleVideoUpload]);
+
+  useImperativeHandle(ref, () => api);
 
   return (
     <motion.div 

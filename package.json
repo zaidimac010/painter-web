@@ -12,7 +12,7 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "autoprefixer": "^10.4.20",
-    "framer-motion": "^10.16.0",
+    "framer-motion": "^10.18.0",
     "postcss": "^8.4.49",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -22,8 +22,8 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "NODE_OPTIONS='--openssl-legacy-provider' craco start",
-    "build": "NODE_OPTIONS='--openssl-legacy-provider' craco build",
+    "start": "craco start",
+    "build": "craco build",
     "test": "craco test",
     "eject": "react-scripts eject"
   },
@@ -46,7 +46,7 @@
     ]
   },
   "devDependencies": {
-    "@craco/craco": "^5.9.0",
+    "@craco/craco": "^7.1.0",
     "@types/webpack-env": "^1.18.5",
     "worker-loader": "^3.0.8"
   }
