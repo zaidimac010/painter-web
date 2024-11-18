@@ -20,14 +20,6 @@ const App = () => {
     canvasRef.current?.clear();
   };
 
-  const handleImageUpload = (file: File) => {
-    canvasRef.current?.handleImageUpload(file);
-  };
-
-  const handleVideoUpload = (file: File) => {
-    canvasRef.current?.handleVideoUpload(file);
-  };
-
   return (
     <div className="relative w-screen h-screen bg-gradient-to-br from-indigo-50 to-pink-50 overflow-hidden">
       <Canvas 
@@ -46,8 +38,6 @@ const App = () => {
         onUndo={handleUndo}
         onRedo={handleRedo}
         onClear={handleClear}
-        onImageUpload={handleImageUpload}
-        onVideoUpload={handleVideoUpload}
       />
     </div>
   );

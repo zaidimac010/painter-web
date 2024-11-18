@@ -5,11 +5,9 @@ import {
   ArrowUturnLeftIcon,
   ArrowUturnRightIcon,
   TrashIcon,
-  PhotoIcon,
-  VideoCameraIcon,
   SwatchIcon,
 } from '@heroicons/react/24/outline';
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 
 interface ToolbarProps {
   onToolChange: (tool: 'pen' | 'eraser') => void;
@@ -18,8 +16,6 @@ interface ToolbarProps {
   onUndo: () => void;
   onRedo: () => void;
   onClear: () => void;
-  onImageUpload: (file: File) => void;
-  onVideoUpload: (file: File) => void;
   currentTool: 'pen' | 'eraser';
   currentColor: string;
   currentSize: number;
@@ -88,16 +84,12 @@ const Toolbar: React.FC<ToolbarProps> = ({
   onUndo,
   onRedo,
   onClear,
-  onImageUpload,
-  onVideoUpload,
   currentTool,
   currentColor,
   currentSize,
 }) => {
   const [showSizePopup, setShowSizePopup] = useState(false);
   const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const videoInputRef = useRef<HTMLInputElement>(null);
 
   const handleToolClick = (tool: 'pen' | 'eraser', event: React.MouseEvent) => {
     const button = event.currentTarget;
@@ -117,42 +109,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
     }
   };
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && file.type.startsWith('image/')) {
-      onImageUpload(file);
-    }
-    if (imageInputRef.current) {
-      imageInputRef.current.value = '';
-    }
-  };
-
-  const handleVideoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && file.type.startsWith('video/')) {
-      onVideoUpload(file);
-    }
-    if (videoInputRef.current) {
-      videoInputRef.current.value = '';
-    }
-  };
-
   return (
     <>
-      <input
-        type="file"
-        ref={imageInputRef}
-        onChange={handleImageUpload}
-        accept="image/*"
-        className="hidden"
-      />
-      <input
-        type="file"
-        ref={videoInputRef}
-        onChange={handleVideoUpload}
-        accept="video/*"
-        className="hidden"
-      />
       <motion.div
         className="fixed bottom-4 inset-x-0 flex justify-center items-center z-40"
         initial={{ y: 100, opacity: 0 }}
@@ -192,22 +150,6 @@ const Toolbar: React.FC<ToolbarProps> = ({
               }`}
             >
               <BackspaceIcon className="w-5 h-5" />
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.1, backgroundColor: '#EEF2FF' }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => imageInputRef.current?.click()}
-              className="p-2 rounded-full hover:bg-gray-100 text-gray-600"
-            >
-              <PhotoIcon className="w-5 h-5" />
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.1, backgroundColor: '#EEF2FF' }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => videoInputRef.current?.click()}
-              className="p-2 rounded-full hover:bg-gray-100 text-gray-600"
-            >
-              <VideoCameraIcon className="w-5 h-5" />
             </motion.button>
           </div>
 
