@@ -7,6 +7,7 @@ import {
   TrashIcon,
   PhotoIcon,
   VideoCameraIcon,
+  SwatchIcon,
 } from '@heroicons/react/24/outline';
 import { useState, useRef } from 'react';
 
@@ -23,13 +24,6 @@ interface ToolbarProps {
   currentColor: string;
   currentSize: number;
 }
-
-const colors = [
-  { name: 'Black', value: '#000000' },
-  { name: 'Red', value: '#FF0000' },
-  { name: 'Blue', value: '#0000FF' },
-  { name: 'Green', value: '#00FF00' },
-];
 
 const SizePopup = ({ 
   size, 
@@ -219,21 +213,24 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
           {/* Colors */}
           <div className="flex items-center gap-1.5 border-r border-gray-200/50 pr-3">
-            <div className="flex gap-1.5">
-              {colors.map((color) => (
-                <button
-                  key={color.value}
-                  onClick={() => onColorChange(color.value)}
-                  className={`w-6 h-6 rounded-full transition-colors relative ${
-                    currentColor === color.value ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-white/90' : ''
-                  }`}
-                  style={{ backgroundColor: color.value }}
-                >
-                  {currentColor === color.value && (
-                    <div className="absolute inset-0 rounded-full ring-2 ring-white" />
-                  )}
-                </button>
-              ))}
+            <div className="relative">
+              <motion.button
+                whileHover={{ scale: 1.1, backgroundColor: '#EEF2FF' }}
+                whileTap={{ scale: 0.95 }}
+                className="p-2 rounded-full hover:bg-gray-100 text-gray-600 relative"
+              >
+                <SwatchIcon className="w-5 h-5" />
+                <input
+                  type="color"
+                  value={currentColor}
+                  onChange={(e) => onColorChange(e.target.value)}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+              </motion.button>
+              <div 
+                className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-3 h-3 rounded-full border-2 border-white"
+                style={{ backgroundColor: currentColor }}
+              />
             </div>
           </div>
 
