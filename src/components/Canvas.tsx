@@ -29,6 +29,54 @@ const Canvas = forwardRef<any, CanvasProps>(({ tool, brushColor, brushSize }, re
   const [isInitialized, setIsInitialized] = useState(false);
   const dprRef = useRef(window.devicePixelRatio || 1);
 
+  const updateBrushStyle = useCallback((ctx: CanvasRenderingContext2D) => {
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = tool === 'eraser' ? '#FFFFFF' : brushColor;
+    ctx.lineWidth = brushSize;
+    ctx.globalCompositeOperation = tool === 'eraser' ? 'destination-out' : 'source-over';
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+  }, [tool, brushColor, brushSize]);
+
+  const handleResize = useCallback(() => {
+    if (!canvasRef.current || !contextRef.current || !isInitialized) return;
+
+    const canvas = canvasRef.current;
+    const parent = canvas.parentElement;
+    if (!parent) return;
+
+    const dpr = dprRef.current;
+    const rect = parent.getBoundingClientRect();
+
+    // Create a temporary canvas to store the current drawing
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    if (!tempCtx) return;
+
+    tempCanvas.width = canvas.width;
+    tempCanvas.height = canvas.height;
+    tempCtx.drawImage(canvas, 0, 0);
+
+    // Resize the main canvas
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    canvas.style.width = `${rect.width}px`;
+    canvas.style.height = `${rect.height}px`;
+
+    const ctx = contextRef.current;
+    ctx.scale(dpr, dpr);
+    updateBrushStyle(ctx);
+
+    // Draw back the content
+    ctx.drawImage(tempCanvas, 0, 0, rect.width, rect.height);
+  }, [updateBrushStyle, isInitialized]);
+
+  useEffect(() => {
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [handleResize]);
+
   useEffect(() => {
     if (!canvasRef.current || isInitialized) return;
 
@@ -71,60 +119,12 @@ const Canvas = forwardRef<any, CanvasProps>(({ tool, brushColor, brushSize }, re
     }]);
 
     setIsInitialized(true);
-  }, [brushColor, brushSize, tool, isInitialized]);
-
-  const updateBrushStyle = useCallback((ctx: CanvasRenderingContext2D) => {
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = tool === 'eraser' ? '#FFFFFF' : brushColor;
-    ctx.lineWidth = brushSize;
-    ctx.globalCompositeOperation = tool === 'eraser' ? 'destination-out' : 'source-over';
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-  }, [tool, brushColor, brushSize]);
+  }, [brushColor, brushSize, tool, isInitialized, updateBrushStyle]);
 
   useEffect(() => {
     if (!contextRef.current) return;
     updateBrushStyle(contextRef.current);
-  }, [tool, brushColor, brushSize, updateBrushStyle]);
-
-  const handleResize = useCallback(() => {
-    if (!canvasRef.current || !contextRef.current || !isInitialized) return;
-
-    const canvas = canvasRef.current;
-    const parent = canvas.parentElement;
-    if (!parent) return;
-
-    const dpr = dprRef.current;
-    const rect = parent.getBoundingClientRect();
-
-    // Create a temporary canvas to store the current drawing
-    const tempCanvas = document.createElement('canvas');
-    const tempCtx = tempCanvas.getContext('2d');
-    if (!tempCtx) return;
-
-    tempCanvas.width = canvas.width;
-    tempCanvas.height = canvas.height;
-    tempCtx.drawImage(canvas, 0, 0);
-
-    // Resize the main canvas
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    canvas.style.width = `${rect.width}px`;
-    canvas.style.height = `${rect.height}px`;
-
-    const ctx = contextRef.current;
-    ctx.scale(dpr, dpr);
-    updateBrushStyle(ctx);
-
-    // Draw back the content
-    ctx.drawImage(tempCanvas, 0, 0, rect.width, rect.height);
-  }, [updateBrushStyle, isInitialized]);
-
-  useEffect(() => {
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [handleResize]);
+  }, [updateBrushStyle]);
 
   const getCoordinates = useCallback((event: React.MouseEvent | React.TouchEvent): Point | null => {
     if (!canvasRef.current) return null;
@@ -175,14 +175,6 @@ const Canvas = forwardRef<any, CanvasProps>(({ tool, brushColor, brushSize }, re
     setLastPoint(point);
   }, [isDrawing, lastPoint, getCoordinates]);
 
-  const stopDrawing = useCallback(() => {
-    if (isDrawing) {
-      saveState();
-    }
-    setIsDrawing(false);
-    setLastPoint(null);
-  }, [isDrawing]);
-
   const saveState = useCallback(() => {
     if (!contextRef.current || !canvasRef.current) return;
     
@@ -197,6 +189,14 @@ const Canvas = forwardRef<any, CanvasProps>(({ tool, brushColor, brushSize }, re
     }]);
     setRedoStack([]);
   }, [tool, brushColor, brushSize]);
+
+  const stopDrawing = useCallback(() => {
+    if (isDrawing) {
+      saveState();
+    }
+    setIsDrawing(false);
+    setLastPoint(null);
+  }, [isDrawing, saveState]);
 
   const undo = useCallback(() => {
     if (undoStack.length <= 1) return;
